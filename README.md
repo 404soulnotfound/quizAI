@@ -138,24 +138,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🌐 Production Deployment
 
-### 🚂 Deploy Backend on [Railway](https://railway.app)
-1. Click **New Project** → **Deploy from GitHub repo** → select `quizAI`.
-2. Under **Settings**, set **Root Directory** to `backend`.
-3. Under **Variables**, add:
-   - `GEMINI_API_KEY`: *(Your key from Google AI Studio)*
-   - `SECRET_KEY`: *(Any secure random string)*
-   - `ALLOWED_ORIGINS`: `*`
-4. Under **Settings** → **Networking**, click **Generate Domain** and copy your backend URL.
-
-### ▲ Deploy Frontend on [Vercel](https://vercel.com)
-1. Click **Add New…** → **Project** → Import `quizAI`.
-2. Set **Root Directory** to `frontend`.
-3. Add Environment Variables:
-   - `VITE_API_URL` = `https://your-backend.up.railway.app`
-   - `VITE_WS_URL` = `https://your-backend.up.railway.app`
-4. Click **Deploy**.
 
 ---
 
