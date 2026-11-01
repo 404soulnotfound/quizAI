@@ -9,7 +9,7 @@ app = FastAPI(title="QuizAI", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,9 +19,18 @@ app.include_router(auth.router)
 app.include_router(rooms.router)
 app.include_router(websocket.router)
 
+# Ensure database tables exist immediately on startup
+try:
+    create_tables()
+except Exception as e:
+    print(f"Database table creation warning: {e}")
+
 @app.on_event("startup")
 async def startup():
-    create_tables()
+    try:
+        create_tables()
+    except Exception as e:
+        print(f"Startup DB init warning: {e}")
 
 @app.get("/")
 def root():
