@@ -4,6 +4,7 @@
 
 ### Real-Time Multiplayer AI-Powered Quiz Arena
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-quiz--ai--gg--2e37.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://quiz-ai-gg-2e37.vercel.app)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
