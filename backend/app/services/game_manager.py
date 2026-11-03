@@ -9,7 +9,7 @@ This is the heart of the real-time multiplayer system.
 """
 import asyncio
 import json
-from typing import Dict, Set
+from typing import Dict
 from fastapi import WebSocket
 
 
@@ -46,6 +46,7 @@ class GameRoom:
         self.current_q_idx = -1   # -1 = not started
         self.status        = "waiting"  # waiting, active, finished
         self.q_timer_task  = None
+        self.q_started_at  = None   # track when current question started
         self.answers_this_q: Dict[int, str] = {}  # user_id → answer
 
     @property
@@ -63,6 +64,15 @@ class GameRoom:
             {**p.to_dict(), "rank": i + 1}
             for i, p in enumerate(sorted_players)
         ]
+
+    def get_time_remaining(self) -> int:
+        """Calculate remaining seconds for current question."""
+        if self.q_started_at is None or self.current_question is None:
+            return self.time_per_q
+        import time
+        elapsed = time.time() - self.q_started_at
+        remaining = max(0, self.time_per_q - int(elapsed))
+        return remaining
 
 
 class GameManager:
@@ -101,9 +111,19 @@ class GameManager:
 
         await websocket.accept()
         player = PlayerConnection(websocket, user_id, username, avatar)
+
+        # If player already exists (reconnect from lobby→game transition), preserve score
+        if user_id in room.players:
+            existing = room.players[user_id]
+            player.score = existing.score
+            player.streak = existing.streak
+            player.max_streak = existing.max_streak
+            player.correct = existing.correct
+            player.answered_current = existing.answered_current
+
         room.players[user_id] = player
 
-        # Tell everyone someone joined
+        # Tell everyone someone joined/reconnected
         await self.broadcast(room_code, {
             "type": "player_joined",
             "data": {
@@ -114,17 +134,33 @@ class GameManager:
         })
 
         # Send current game state to the newly joined player
+        state_data = {
+            "room_code":   room_code,
+            "status":      room.status,
+            "all_players": room.get_leaderboard(),
+            "is_host":     user_id == room.host_id,
+            "current_q":   room.current_q_idx,
+            "total_q":     len(room.questions),
+        }
         await self._send_to_player(player, {
             "type": "room_state",
-            "data": {
-                "room_code":   room_code,
-                "status":      room.status,
-                "all_players": room.get_leaderboard(),
-                "is_host":     user_id == room.host_id,
-                "current_q":   room.current_q_idx,
-                "total_q":     len(room.questions),
-            }
+            "data": state_data
         })
+
+        # KEY FIX: If game is active, immediately send the current question to reconnecting player
+        if room.status == "active" and room.current_question is not None:
+            q = room.current_question
+            time_remaining = room.get_time_remaining()
+            await self._send_to_player(player, {
+                "type": "question",
+                "data": {
+                    "index":      room.current_q_idx,
+                    "total":      len(room.questions),
+                    "question":   q["question"],
+                    "options":    q["options"],
+                    "time_limit": time_remaining,  # remaining time, not full time
+                }
+            })
 
         return room
 
@@ -172,12 +208,14 @@ class GameManager:
         await self._send_next_question(room_code)
 
     async def _send_next_question(self, room_code: str):
+        import time
         room = self.get_room(room_code)
         if not room:
             return
 
         room.current_q_idx += 1
         room.answers_this_q = {}
+        room.q_started_at = time.time()
 
         # Reset answered flag for all players
         for player in room.players.values():
@@ -229,8 +267,8 @@ class GameManager:
             }
         })
 
-        # Wait 3 seconds then send next question
-        await asyncio.sleep(3)
+        # Wait 4 seconds then send next question (extra second for reconnections)
+        await asyncio.sleep(4)
         await self._send_next_question(room_code)
 
     async def handle_answer(
